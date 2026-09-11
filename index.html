@@ -3,10 +3,173 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Beam Selector</title>
+<title>Beam Selector — Plant Sizing Desk</title>
+<style>
+  :root {
+    --bg: #0e1116;
+    --panel: #171c24;
+    --panel2: #1e2530;
+    --line: #2a3340;
+    --text: #e8edf4;
+    --muted: #8b97a8;
+    --blue: #3b8fe8;
+    --blue-dim: #1f4f86;
+    --ok: #3dcf86;
+    --ok-bg: #123325;
+    --fail: #ef6b5a;
+    --fail-bg: #3a1a16;
+    --warn: #e6b84d;
+    --orange: #f0a03a;
+    --mono: "IBM Plex Mono", "Consolas", ui-monospace, monospace;
+    --sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); }
+  body { min-height: 100vh; }
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 22px; border-bottom: 1px solid var(--line);
+    background: #12171e;
+    position: sticky; top: 0; z-index: 20;
+  }
+  header h1 { font-size: 16px; letter-spacing: .04em; margin: 0; font-weight: 650; }
+  header h1 span { color: var(--muted); font-weight: 400; margin-left: 10px; font-size: 12px; }
+  .badge { font-size: 11px; color: var(--orange); border: 1px solid #5a3d14; background: #2a1d0a; padding: 4px 8px; border-radius: 999px; }
+  .wrap { display: grid; grid-template-columns: 340px 1fr 380px; gap: 0; min-height: calc(100vh - 57px); }
+  @media (max-width: 1180px) { .wrap { grid-template-columns: 1fr; } }
+  aside, main, .out { padding: 18px; }
+  aside { border-right: 1px solid var(--line); background: #12171e; }
+  .out { border-left: 1px solid var(--line); background: #12171e; }
+  h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); margin: 0 0 10px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 12px 0 6px; }
+  input, select {
+    width: 100%; background: var(--panel); color: var(--text);
+    border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font: 14px var(--sans);
+  }
+  input:focus, select:focus { outline: 1px solid var(--blue); }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .cases { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .case {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 8px; cursor: pointer; min-height: 118px;
+  }
+  .case:hover { border-color: #3d4c60; }
+  .case.active { border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue-dim); }
+  .case svg { width: 100%; height: 54px; display: block; }
+  .case .name { font-size: 11px; margin-top: 6px; color: var(--text); }
+  .case .form { font-size: 10px; color: var(--muted); font-family: var(--mono); margin-top: 2px; }
+  .viewer {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+    padding: 16px 16px 8px; min-height: 220px;
+  }
+  .viewer svg { width: 100%; height: 160px; }
+  .formula-box {
+    font-family: var(--mono); font-size: 13px; color: #c9d6e8;
+    background: #0c1016; border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px 14px; margin-top: 12px; line-height: 1.55;
+  }
+  .verdict {
+    border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; border: 1px solid;
+  }
+  .verdict.pass { background: var(--ok-bg); border-color: #1f6a44; }
+  .verdict.fail { background: var(--fail-bg); border-color: #7a3228; }
+  .verdict h3 { margin: 0 0 6px; font-size: 20px; }
+  .checks { display: grid; gap: 8px; }
+  .chk {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+    display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; font-size: 13px;
+  }
+  .chk .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+  .pill { font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 650; }
+  .pill.ok { background: #163526; color: var(--ok); }
+  .pill.no { background: #3a1c18; color: var(--fail); }
+  .math { font-family: var(--mono); font-size: 12px; color: #a9b7c8; grid-column: 1 / -1; }
+  .rec {
+    margin-top: 14px; background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; padding: 12px;
+  }
+  .rec b { color: var(--orange); }
+  .tiny { font-size: 11px; color: var(--muted); line-height: 1.45; margin-top: 14px; }
+  button.run {
+    width: 100%; margin-top: 16px; background: var(--blue); color: #fff; border: 0;
+    border-radius: 10px; padding: 10px; font-weight: 650; cursor: pointer;
+  }
+  button.run:hover { filter: brightness(1.08); }
+</style>
 </head>
 <body>
-<p>Placeholder — full app uploading next.</p>
-<p><a href="./beam-selector.html">Open app</a></p>
+<header>
+  <h1>BEAM SELECTOR <span>AISC W-shapes · closed-form spans</span></h1>
+  <div class="badge">PRELIMINARY SIZING — not a stamped calc</div>
+</header>
+<div class="wrap">
+  <aside>
+    <h2>Section</h2>
+    <label>Shape family</label>
+    <select id="family"><option value="W">W — Wide flange</option></select>
+    <label>Section</label>
+    <select id="section"></select>
+    <div class="row2">
+      <div>
+        <label>Fy (ksi)</label>
+        <select id="fy">
+          <option value="50" selected>50 — A992 / A572-50</option>
+          <option value="36">36 — A36</option>
+        </select>
+      </div>
+      <div>
+        <label>E (ksi)</label>
+        <input id="E" value="29000" />
+      </div>
+    </div>
+    <h2 style="margin-top:22px">Span & load</h2>
+    <div class="row2">
+      <div>
+        <label>Span L (ft)</label>
+        <input id="L" type="number" value="16" min="1" step="0.5" />
+      </div>
+      <div>
+        <label>Defl. limit</label>
+        <select id="deflim">
+          <option value="240">L/240 total</option>
+          <option value="360" selected>L/360 live-ish</option>
+          <option value="180">L/180 coarse</option>
+          <option value="120">L/120</option>
+        </select>
+      </div>
+    </div>
+    <label>Load type value</label>
+    <div class="row2">
+      <div>
+        <label id="loadLbl">Uniform w (plf)</label>
+        <input id="load" type="number" value="200" min="0" step="10" />
+      </div>
+      <div>
+        <label>Self-weight</label>
+        <select id="selfw">
+          <option value="1" selected>Add beam weight</option>
+          <option value="0">Ignore self-weight</option>
+        </select>
+      </div>
+    </div>
+    <label class="tiny" style="margin-top:4px">Point loads in pounds. Uniform in pounds per foot.</label>
+    <button class="run" id="go">Recalculate</button>
+    <p class="tiny">Assumes strong-axis bending, compact section, full lateral bracing. No LTB, no ponding, no connection design. AISC 360 ASD-style: Mn/Ωb = Fy Zx / 1.67. Shear Vn/Ωv ≈ 0.6 Fy d tw / 1.50.</p>
+  </aside>
+  <main>
+    <h2>Span case</h2>
+    <div class="cases" id="cases"></div>
+    <div class="viewer" style="margin-top:14px">
+      <svg id="bigSvg" viewBox="0 0 640 200"></svg>
+    </div>
+    <div class="formula-box" id="formulaBox"></div>
+  </main>
+  <section class="out">
+    <div id="verdict"></div>
+    <div class="checks" id="checks"></div>
+    <div class="rec" id="rec"></div>
+    <p class="tiny">Properties are AISC-typical published values for common W-shapes. Check the Manual before you buy steel.</p>
+  </section>
+</div>
+<script src="app.js"></script>
 </body>
 </html>
