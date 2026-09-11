@@ -59,6 +59,7 @@
   .rec b { color: var(--orange); }
   .tiny { font-size: 11px; color: var(--muted); line-height: 1.45; margin-top: 14px; }
   button.run { width: 100%; margin-top: 16px; background: var(--blue); color: #fff; border: 0; border-radius: 10px; padding: 10px; font-weight: 650; cursor: pointer; }
+  button.ghost { width: 100%; margin-top: 8px; background: transparent; color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 8px; font-weight: 650; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -102,8 +103,9 @@
     </div>
     <div id="posRow" style="display:none">
       <label id="posLbl">a from left (ft)</label>
-      <input id="pos" type="number" value="8" min="0.1" step="0.1" />
-      <label class="tiny" style="margin-top:4px">Point-load location along the span. Diagram follows this number.</label>
+      <input id="pos" type="text" inputmode="decimal" value="8" autocomplete="off" />
+      <button type="button" class="ghost" id="centerA">Center of beam</button>
+      <label class="tiny" style="margin-top:4px">Type any distance. Math clamps only when you leave the box. Center sets a = L/2.</label>
     </div>
     <button class="run" id="go">Recalculate</button>
     <p class="tiny">Strong-axis, compact, fully braced. No LTB. Angles use geometric X-X. Bar is on-edge. ASD Mn/Ωb = Fy Zx / 1.67.</p>
