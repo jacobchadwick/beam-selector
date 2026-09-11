@@ -1,26 +1,31 @@
 const CASES = [
   {id:"ss-udl",name:"Simple span \u00b7 uniform",form:"M = wL²/8",loadKind:"udl",pos:false,mTex:"M_max = w L² / 8",vTex:"V_max = w L / 2",dTex:"Δ_max = 5 w L⁴ / (384 E I)",note:"Max moment and deflection at midspan."},
-  {id:"ss-p",name:"Simple span \u00b7 point",form:"M = Pab/L",loadKind:"point",pos:true,posLabel:"a from left (ft)",mTex:"M_max = P a b / L   (b = L\u2212a)",vTex:"V_L = P b / L    V_R = P a / L",dTex:"Δ_load = P a² b² / (3 E I L)",note:"Slide a to put the point load anywhere between supports."},
+  {id:"ss-p",name:"Simple span \u00b7 point",form:"M = Pab/L",loadKind:"point",pos:true,posLabel:"a from left (ft)",mTex:"M_max = P a b / L   (b = L\u2212a)",vTex:"V_L = P b / L    V_R = P a / L",dTex:"Δ_load = P a² b² / (3 E I L)",note:"Put the point load anywhere between supports."},
   {id:"cant-udl",name:"Cantilever \u00b7 uniform",form:"M = wL²/2",loadKind:"udl",pos:false,mTex:"M_max = w L² / 2",vTex:"V_max = w L",dTex:"Δ_tip = w L⁴ / (8 E I)",note:"Root moment. Walkway overhangs and jibs."},
-  {id:"cant-p",name:"Cantilever \u00b7 point",form:"M = P a",loadKind:"point",pos:true,posLabel:"a from fixed end (ft)",mTex:"M_fixed = P a",vTex:"V_fixed = P",dTex:"Δ_tip = P a² (3L\u2212a) / (6 E I)",note:"a = L is a tip load. a < L is a load parked inboard of the tip."},
+  {id:"cant-p",name:"Cantilever \u00b7 point",form:"M = P a",loadKind:"point",pos:true,posLabel:"a from fixed end (ft)",mTex:"M_fixed = P a",vTex:"V_fixed = P",dTex:"Δ_tip = P a² (3L\u2212a) / (6 E I)",note:"a = L is a tip load. a < L is inboard of the tip."},
   {id:"fix-udl",name:"Fixed-fixed \u00b7 uniform",form:"M = wL²/12",loadKind:"udl",pos:false,mTex:"M_end = w L² / 12",vTex:"V_max = w L / 2",dTex:"Δ_max = w L⁴ / (384 E I)",note:"Only if both ends can actually develop fixity."},
   {id:"fix-p",name:"Fixed-fixed \u00b7 point",form:"M = Pab²/L²",loadKind:"point",pos:true,posLabel:"a from left (ft)",mTex:"M_left = P a b² / L²    M_right = P a² b / L²",vTex:"R_L = P b² (3a+b) / L³",dTex:"Δ_load = P a³ b³ / (3 E I L³)",note:"Move the point load off center. End moments change with a."}
 ];
 let current = CASES[0];
-function clampA(Lft) {
-  const el = document.getElementById("pos");
-  let a = Number(el.value);
-  const lo = 0.05, hi = Math.max(0.1, Lft - 0.05);
-  if (!Number.isFinite(a) || a < lo) a = current.id.startsWith("cant") ? Lft : Lft/2;
+function parseA(Lft) {
+  const raw = String(document.getElementById("pos").value).replace(",",".");
+  let a = parseFloat(raw);
+  if (!Number.isFinite(a)) a = Lft/2;
+  const lo = 0.01, hi = Math.max(0.02, Lft);
+  if (a < lo) a = lo;
   if (a > hi) a = hi;
-  el.value = (+a.toFixed(2));
-  return Number(el.value);
+  return a;
+}
+function snapCenter() {
+  const Lft = Number(document.getElementById("L").value) || 16;
+  document.getElementById("pos").value = String(+(Lft/2).toFixed(3));
+  render();
 }
 function svgFor(id, big, aRatio) {
   const W = big ? 640 : 200, H = big ? 200 : 80;
   const yb = big ? 130 : 48;
   const x1 = big ? 70 : 22, x2 = big ? 570 : 178;
-  const r = (aRatio == null) ? 0.5 : Math.min(0.95, Math.max(0.05, aRatio));
+  const r = (aRatio == null) ? 0.5 : Math.min(0.98, Math.max(0.02, aRatio));
   const mid = x1 + (x2-x1)*r;
   const loadH = big ? 28 : 12;
   let loads = "";
@@ -57,7 +62,10 @@ function fillCases() {
     el.onclick = () => {
       current = CASES.find(c => c.id === el.dataset.id);
       document.querySelectorAll(".case").forEach(x => x.classList.toggle("active", x===el));
-      syncLoadLabel(); render();
+      syncLoadLabel();
+      const Lft = Number(document.getElementById("L").value) || 16;
+      if (current.pos && !String(document.getElementById("pos").value).trim()) snapCenter();
+      else render();
     };
   });
 }
@@ -73,8 +81,8 @@ function analyze(shape, cse, Lft, rawLoad, fy, Eksi, defN, addSW, aFt) {
   const L = Lft * 12, E = Eksi, I = shape && shape.Ix;
   if (!shape || !I) return null;
   let M = 0, V = 0, delta = 0;
-  let a = Math.min(Math.max(aFt || Lft/2, 0.05), Math.max(0.1, Lft-0.05));
-  const a_in = a * 12, b_in = L - a_in;
+  let a = Math.min(Math.max(aFt || Lft/2, 0.01), Math.max(0.02, Lft));
+  const a_in = a * 12, b_in = Math.max(0.01, L - a_in);
   if (cse.loadKind === "udl") {
     const w = (Number(rawLoad) + (addSW ? shape.wt : 0)) / 12;
     if (cse.id === "ss-udl") { M = w*L*L/8; V = w*L/2; delta = 5*w*Math.pow(L,4)/(384*E*1000*I); }
@@ -111,7 +119,7 @@ function analyze(shape, cse, Lft, rawLoad, fy, Eksi, defN, addSW, aFt) {
 function fmt(n, d=2){ return Number.isFinite(n) ? n.toFixed(d) : "\u2014"; }
 function inputs() {
   const Lft = Number(document.getElementById("L").value);
-  return { shape: getShape(document.getElementById("section").value), Lft, load: Number(document.getElementById("load").value), fy: Number(document.getElementById("fy").value), E: Number(document.getElementById("E").value), defN: Number(document.getElementById("deflim").value), addSW: document.getElementById("selfw").value === "1", aFt: current.pos ? clampA(Lft) : Lft/2 };
+  return { shape: getShape(document.getElementById("section").value), Lft, load: Number(document.getElementById("load").value), fy: Number(document.getElementById("fy").value), E: Number(document.getElementById("E").value), defN: Number(document.getElementById("deflim").value), addSW: document.getElementById("selfw").value === "1", aFt: current.pos ? parseA(Lft) : Lft/2 };
 }
 function render() {
   const inn = inputs();
@@ -137,9 +145,19 @@ function render() {
   document.getElementById("useBest").onclick = () => { document.getElementById("section").value = best.name; render(); };
 }
 document.getElementById("family").addEventListener("change", () => { fillSections(); render(); });
-["section","L","load","fy","E","deflim","selfw","pos"].forEach(id => {
+["section","L","load","fy","E","deflim","selfw"].forEach(id => {
   const el = document.getElementById(id); if (!el) return;
-  el.addEventListener("input", render); el.addEventListener("change", render);
+  el.addEventListener("change", render);
+  el.addEventListener("input", render);
 });
+const pos = document.getElementById("pos");
+pos.addEventListener("input", render);
+pos.addEventListener("blur", () => {
+  const Lft = Number(document.getElementById("L").value) || 16;
+  const a = parseA(Lft);
+  pos.value = String(+a.toFixed(3));
+  render();
+});
+document.getElementById("centerA").onclick = snapCenter;
 document.getElementById("go").onclick = render;
-fillSections(); fillCases(); syncLoadLabel(); render();
+fillSections(); fillCases(); syncLoadLabel(); snapCenter();
